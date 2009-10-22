@@ -20,7 +20,10 @@
 
 #ifdef __cplusplus
 #include <string.h>
+#include <math.h>
+#include <stdlib.h>
 extern int verbose;
+extern int positive_gain;
 #endif
 
 enum E_In84 {
@@ -99,15 +102,83 @@ public:
 	int Scale(){return 0x40;}
 
 	void calculate() {
-		int lPan = (int)Pan * Slider / 0x80;
-		int ValL = (Slider - lPan) * Scale();
-		LH = ValL >> 8;
-		LL = ValL;
-		int ValR = (Slider + lPan) * Scale();
-		RH = ValR >> 8;
-		RL = ValR;
+		int Val;
+		int ScaledL, ScaledR;
+		float PanLeft, PanRight;
+		float Norm;
+		float dBL, dBR;
+
+		// Subtract 1 because the sliders usually don't reach 0 due to sampling inaccuracy
+		Val = (Slider - 1);
+
+		if(Val < 0) {
+			Val = 0;
+		}
+
+		// This is a balance knob-style pan law
+		PanLeft = (float)(Pan + 127) / 127.0;
+		PanRight = 2.0 - PanLeft;
+
+		if(PanLeft < 0.0) {
+			PanLeft = 0.0;
+		}
+		if(PanLeft > 1.0) {
+			PanLeft = 1.0;
+		}
+		if(PanRight < 0.0) {
+			PanRight = 0.0;
+		}
+		if(PanRight > 1.0) {
+			PanRight = 1.0;
+		}
+
+		Norm = (float)Val / 254.0;
+
+		if(positive_gain) {
+			// -55dB to +12dB
+			dBL = 67.0 * (Norm - 1.0) + 12.0;
+			dBR = 67.0 * (Norm - 1.0) + 12.0;
+		} else {
+			// -55dB to 0dB
+			dBL = 55.0 * (Norm - 1.0);
+			dBR = 55.0 * (Norm - 1.0);
+		}
+
+		// 16384 == 0dB (unity) gain
+		ScaledL = 16384.0 * pow(10.0, dBL / 20.0) * PanLeft;
+		ScaledR = 16384.0 * pow(10.0, dBR / 20.0) * PanRight;
+
+		// Make sure the sound stops completely when the slider is at the bottom
+		if(ScaledL < 30) {
+			ScaledL = 0;
+		}
+		if(ScaledR < 30) {
+			ScaledR = 0;
+		}
+
+		// Prevent overflow of the 16-bit gain value
+		if(positive_gain) {
+			if(ScaledL > 65535) {
+				ScaledL = 65535;
+			}
+			if(ScaledR > 65535) {
+				ScaledR = 65535;
+			}
+		} else {
+			if(ScaledL > 16384) {
+				ScaledL = 16384;
+			}
+			if(ScaledR > 16384) {
+				ScaledR = 16384;
+			}
+		}
+
+		LH = ScaledL >> 8;
+		LL = ScaledL;
+		RH = ScaledR >> 8;
+		RL = ScaledR;
 		if (2 < verbose)
-			printf("S=% 3i, P=% 3i, lP=% 3i, VL=%05i, VR=%05i\n", (int)Slider, (int)Pan, (int)lPan, ValL, ValR);
+			printf("Slider=% 3i, Pan=% 4i, Val=% 3i, dBL=% 6.2f, dBR=% 6.2f, ScaledL=%05i, ScaledR=%05i\n", (int)Slider, (int)Pan, Val, dBL, dBR, ScaledL, ScaledR);
 	}
 
 	void SetTo(unsigned char _Channel, int RawValue){
@@ -116,7 +187,7 @@ public:
 		calculate();
 	}
 	void PanTo(int RawValue, bool Grob) {
-		int NewPan;
+		int NewPan = 0;
 		if (Grob) {
 			static int GrobVals[] = {-128, -64, 0, 64, 127};
 			int i = 4;
@@ -135,8 +206,22 @@ public:
 		} else {
 			NewPan = Pan + RawValue;
 		}
+		
+		// Since the step is now 13, make sure 0 can still be reached
+		if (abs(NewPan) < 7) {
+			NewPan = 0;
+		}
+
+		// If we went past the limit, but we weren't at the limit, clamp to the limit
+		if (NewPan < -128 && Pan > -128)
+			NewPan = -128;
+		else if (NewPan > 127 && Pan < 127)
+			NewPan = 127;
+
+		// If we were already at the limit, then clamping didn't occur above, so ignore the new value
 		if (NewPan < -128  ||  NewPan > 127)
 			return;
+
 		Pan = NewPan;
 		calculate();
 	}

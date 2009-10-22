@@ -46,6 +46,9 @@ void Cus428State::InitDevice(void)
 {
 	if (us428ctls_sharedmem->CtlSnapShotLast >= 0)
 		SliderChangedTo(eFaderM, ((unsigned char*)(us428ctls_sharedmem->CtlSnapShot + us428ctls_sharedmem->CtlSnapShotLast))[eFaderM]);
+
+	// Reset the LEDs to the state known by us428control
+	LightSend();
 }
 
 int Cus428State::LightSend()
@@ -350,7 +353,11 @@ void Cus428State::WheelChangedTo(E_In84 W, char Diff)
 			index++;
 		if (index >= 4)
 			return;
-		Volume[index].PanTo(Diff, us428_ctls->Knob(eK_SET));
+
+		// The pan encoder has 24 detents.  A multiple of 13 allows
+		// the pan to go from full-left to full-right in 20 clicks
+		// instead of 255 clicks (over 10 full turns!).
+		Volume[index].PanTo(Diff * 13, us428_ctls->Knob(eK_SET));
 		if (!LightIs(eL_Mute0 + index))
 			SendVolume(Volume[index]);
 		return;

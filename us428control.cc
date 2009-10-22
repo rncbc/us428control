@@ -44,6 +44,8 @@
 
 int verbose = 1;
 
+int positive_gain = 0;
+
 Cus428Midi Midi;
 
 
@@ -63,8 +65,9 @@ static void usage(void)
 {
 	printf("Tascam US-428 Control\n");
 	printf("version %s\n", VERSION);
-	printf("usage: "PROGNAME" [-v verbosity_level 0..2] [-c card] [-D device] [-u usb-device] [-m mode]\n");
+	printf("usage: "PROGNAME" [-v verbosity_level 0..3] [-c card] [-D device] [-u usb-device] [-m mode] [-g]\n");
 	printf("mode is one of (us224, us428, mixxx)\n");
+	printf("The -g option allows the Input Monitor and Master gains to go above 0dB\n");
 }
 /*
  * check the name id of the given hwdep handle
@@ -171,7 +174,7 @@ int main (int argc, char *argv[])
 		*usb_device_name = getenv("DEVICE");
 	char name[64];
 
-	while ((c = getopt(argc, argv, "c:D:u:v:m:")) != -1) {
+	while ((c = getopt(argc, argv, "c:D:u:v:m:g")) != -1) {
 		switch (c) {
 		case 'c':
 			card = atoi(optarg);
@@ -194,6 +197,10 @@ int main (int argc, char *argv[])
 			else
 			if (!strcmp(optarg, "mixxx"))
 				mode = 1;
+			break;
+		case 'g':
+			// Allow positive gain on sliders (which may result in clipping)
+			positive_gain = 1;
 			break;
 		default:
 			usage();
