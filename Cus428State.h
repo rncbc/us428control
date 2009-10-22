@@ -131,7 +131,8 @@ public:
 	void TransportToggle(unsigned char T);
 	void TransportSet(unsigned char T, bool V);
 	void TransportSend();
-	// Bank switch stabilizer.
+	// Set bank layer state.
+	void BankSet(int B);
 	void BankSend();
 	// Process masked-write sub-command.
 	void MaskedWrite(unsigned char *data);
