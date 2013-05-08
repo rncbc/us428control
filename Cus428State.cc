@@ -555,15 +555,6 @@ void Cus428State::TransportSend()
 }
 
 
-// Bank switch lights stabilizer.
-void Cus428State::BankSend()
-{
-	LightSet(eL_BankL, (aBank == 0));
-	LightSet(eL_BankR, (aBank == cBanks - 1));
-	LightSend();
-}
-
-
 // Set new bank layer state.
 void Cus428State::BankSet( int B )
 {
