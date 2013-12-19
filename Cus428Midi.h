@@ -2,7 +2,7 @@
 /*
  *
  * Copyright (c) 2003 by Karsten Wiese <annabellesgarden@yahoo.de>
- * Copyright (c) 2004-2007 by Rui Nuno Capela <rncbc@rncbc.org>
+ * Copyright (c) 2004-2013 by Rui Nuno Capela <rncbc@rncbc.org>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
